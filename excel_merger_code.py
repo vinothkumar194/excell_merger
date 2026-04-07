@@ -60,13 +60,21 @@ def main():
     Supports `.xlsx`, `.csv`, and `.tsv`.
     """)
 
-    # --- Step 1: Upload ---
-    st.sidebar.header("Upload Files")
+    # --- Step 1: Sidebar Settings ---
+    st.sidebar.header("1. Upload Files")
     uploaded_files = st.file_uploader(
         "Select Excel, CSV or TSV files", 
         type=['xlsx', 'csv', 'tsv'], 
         accept_multiple_files=True
     )
+
+    st.sidebar.header("2. Export Settings")
+    # Feature: Rename before download
+    default_name = f"merged_data_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    custom_filename = st.sidebar.text_input("Custom Output Filename", value=default_name)
+    
+    # Ensure there's a name even if user clears it
+    final_name = custom_filename if custom_filename.strip() else default_name
 
     if uploaded_files:
         st.info(f"📁 {len(uploaded_files)} files uploaded.")
@@ -138,26 +146,44 @@ def main():
             
             st.subheader("📥 Download Results")
             d_col1, d_col2, d_col3, d_col4 = st.columns(4)
-            
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M')
 
             # Excel
             buffer_xlsx = io.BytesIO()
             with pd.ExcelWriter(buffer_xlsx, engine='xlsxwriter') as writer:
                 merged_df.to_excel(writer, index=False, sheet_name='MergedData')
-            d_col1.download_button("Download XLSX", buffer_xlsx.getvalue(), f"merged_{timestamp}.xlsx", "application/vnd.ms-excel")
+            d_col1.download_button(
+                label="Download XLSX", 
+                data=buffer_xlsx.getvalue(), 
+                file_name=f"{final_name}.xlsx", 
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
             
             # CSV
-            d_col2.download_button("Download CSV", merged_df.to_csv(index=False).encode('utf-8'), f"merged_{timestamp}.csv", "text/csv")
+            d_col2.download_button(
+                label="Download CSV", 
+                data=merged_df.to_csv(index=False).encode('utf-8'), 
+                file_name=f"{final_name}.csv", 
+                mime="text/csv"
+            )
             
             # TSV
-            d_col3.download_button("Download TSV", merged_df.to_csv(index=False, sep='\t').encode('utf-8'), f"merged_{timestamp}.tsv", "text/tab-separated-values")
+            d_col3.download_button(
+                label="Download TSV", 
+                data=merged_df.to_csv(index=False, sep='\t').encode('utf-8'), 
+                file_name=f"{final_name}.tsv", 
+                mime="text/tab-separated-values"
+            )
             
             # PDF
             if FPDF:
                 pdf_bytes = convert_df_to_pdf(merged_df)
                 if pdf_bytes:
-                    d_col4.download_button("Download PDF Preview", pdf_bytes, f"merged_{timestamp}.pdf", "application/pdf")
+                    d_col4.download_button(
+                        label="Download PDF Preview", 
+                        data=pdf_bytes, 
+                        file_name=f"{final_name}.pdf", 
+                        mime="application/pdf"
+                    )
             else:
                 d_col4.warning("Install fpdf2 for PDF")
 
